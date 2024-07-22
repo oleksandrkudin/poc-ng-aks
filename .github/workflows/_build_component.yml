@@ -18,6 +18,9 @@ jobs:
     name: build_component (${{ inputs.component }})
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}-no-approve
+    env:
+      layer: ${{ inputs.layer }}
+      component: ${{ inputs.component }}
     defaults:
       run:
         working-directory: src/terragrunt/${{ inputs.layer }}/${{ inputs.component }}
@@ -34,20 +37,21 @@ jobs:
       - name: Terragrunt init
         shell: bash
         run: |
-          echo "Running terragrunt init"
+          terragrunt init
       
       - name: Terragrunt validate
         shell: bash
         run: |
-          echo "Running terragrunt validate"
+          terragrunt validate
       
       - name: Terragrunt plan
         shell: bash
         run: |
-          echo "Running terragrunt plan"
+          terragrunt plan -out ${layer}-{component}.tfplan
       
       # TODO: I do not think I need here publishing artifact. Not sure. Where will be another build that will require artifact to be published.
       - name: Publish terraform plan
         shell: bash
         run: |
           echo "Publishing terraform plan"
+          ls -lh 
