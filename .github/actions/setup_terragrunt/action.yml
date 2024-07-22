@@ -1,0 +1,32 @@
+name: Setup Terragrunt
+
+inputs:
+  terragrunt_version:
+    description: "Terragrunt release version."
+    required: false
+    default: v0.63.2
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Terragrunt
+      shell: bash
+      env:
+        terragrunt_version: ${{ inputs.terragrunt_version }}
+      run: |
+        if [[ ! -f /bin/terragrunt || "$terragrunt_version" != "$(terragrunt --version | cut -d ' ' -f 3)"  ]]; then
+          echo "Installing terragrunt ..."
+          sudo wget -q -O /bin/terragrunt "https://github.com/gruntwork-io/terragrunt/releases/download/${terragrunt_version}/terragrunt_linux_amd64"
+          sudo chmod +x /bin/terragrunt
+        else
+          echo "Terragrunt already exists."
+        fi
+        terragrunt -v
+    
+    - name: Configure Terragrunt
+      shell: bash
+      run: |
+        TERRAGRUNT_DOWNLOAD="$HOME/.terragrunt-cache"
+        echo "TERRAGRUNT_DOWNLOAD=$TERRAGRUNT_DOWNLOAD" | tee -a "$GITHUB_ENV"
+        echo "TERRAGRUNT_NON_INTERACTIVE=true" | tee -a "$GITHUB_ENV"
+        mkdir -p $TERRAGRUNT_DOWNLOAD
