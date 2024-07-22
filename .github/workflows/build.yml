@@ -1,0 +1,29 @@
+name: Build product
+
+on:
+  pull_request:
+
+# Can we use matrix job for build?
+#   I dropped off this idea because of job dependecies.
+#   But why dependencies could be important for build? => Only if refresh is done and next layer refer to attribute changed during refresh. I got a little bit accurate plan.
+#   But without dependencies I speed up build. Speed here is more important. Plan is in any case is not 100% accurate here.
+jobs:
+  build:
+    strategy:
+      matrix:
+        layer: ["base", "core"]
+    uses: ./.github/workflows/_build_layer.yml
+    with:
+      layer: ${{ matrix.layer }}
+      env: "dev"
+
+  # build_base:
+  #   uses: ./.github/workflows/_build_layer.yml
+  #   with:
+  #     layer: base
+  
+  # build_core:
+  #   needs: [build_base]
+  #   uses: ./.github/workflows/_build_layer.yml
+  #   with:
+  #     layer: core

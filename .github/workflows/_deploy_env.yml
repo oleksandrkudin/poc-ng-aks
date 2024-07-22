@@ -1,0 +1,15 @@
+name: Deploy environment
+
+on:
+  workflow_call:
+    inputs:
+      env:
+        description: "Environment name."
+        type: string
+
+jobs:
+  deploy_base:
+    uses: ./.github/workflows/_deploy_layer.yml
+    with:
+      layer: base
+      env: ${{ inputs.env }}

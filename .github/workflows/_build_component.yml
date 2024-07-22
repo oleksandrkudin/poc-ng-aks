@@ -1,0 +1,60 @@
+name: Build component
+
+on:
+  workflow_call:
+    inputs:
+      env:
+        description: "Environment name."
+        type: string
+      component_path:
+        description: "Absolute path to component code."
+        type: string
+
+jobs:
+  build_component:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.env }}-no-approve
+    defaults:
+      run:
+        working-directory: ${{ inputs.component_path }}
+    steps:
+      - name: Install Terraform
+        shell: bash
+        run: |
+          echo "Installing Terraform"
+
+      - name: Configure Terraform
+        shell: bash
+        run: |
+          echo "Configuring Terraform"
+
+      - name: Install Terragrunt
+        shell: bash
+        run: |
+          echo "Installing Terragrunt"
+
+      - name: Configure Terragrunt
+        shell: bash
+        run: |
+          echo "Configuring Terragrunt"
+
+      - name: Terragrunt init
+        shell: bash
+        run: |
+          echo "Running terragrunt init"
+      
+      - name: Terragrunt validate
+        shell: bash
+        run: |
+          echo "Running terragrunt validate"
+      
+      - name: Terragrunt plan
+        shell: bash
+        run: |
+          echo "Running terragrunt plan"
+      
+      # TODO: I do not think I need here publishing artifact. Not sure. Where will be another build that will require artifact to be published.
+      - name: Publish terraform plan
+        shell: bash
+        run: |
+          echo "Publishing terraform plan"

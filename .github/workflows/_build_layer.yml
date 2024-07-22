@@ -1,0 +1,49 @@
+name: Build layer
+
+on:
+  workflow_call:
+    inputs:
+      layer:
+        description: "Layer name."
+        type: string
+      env:
+        description: "Environment name."
+        type: string
+
+
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/terragrunt/${{ inputs.layer }}
+    env:
+      layer: ${{ inputs.layer }}
+    outputs:
+      component_list: ${{ steps.component_list.outputs.component_list }}
+    steps:
+      - name: Terragrunt output-module-groups
+        shell: bash
+        run: |
+          terragrunt output-module-groups --terragrunt-ignore-external-dependencies | tee ${RUNNER_TEMP}/${layer}.json
+
+      - name: Create list of terragrunt modules
+        shell: bash
+        run: |
+          jq '[. | to_entries | .[].value] | flatten' ${RUNNER_TEMP}/${layer}.json | tee ${RUNNER_TEMP}/${layer}-modules.json
+      
+      - name: Set step output to terragrunt modules
+        id: component_list
+        shell: bash
+        run: |
+          echo "component_list=$(jq '.' --compact-output ${RUNNER_TEMP}/${layer}-modules.json)" | tee -a "$GITHUB_OUTPUT"
+
+  build_component:
+    needs: matrix
+    strategy:
+      matrix:
+        component_path:  ${{ fromJson(needs.matrix.outputs.component_list) }}
+    uses: ./.github/workflows/_build_component.yml
+    with:
+      component_path: ${{ matrix.component_path }}
+      env: ${{ inputs.env }}

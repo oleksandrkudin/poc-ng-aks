@@ -1,0 +1,41 @@
+name: Deploy component
+
+on:
+  workflow_call:
+    inputs:
+      env:
+        description: "Environment name."
+        type: string
+      component_list:
+        description: "Component list."
+        type: string
+
+jobs:
+
+  # Create terraform plan
+  build_component:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.env }}-no-approve
+    strategy:
+      matrix:
+        component_path: ${{ fromJson(inputs.component_list) }}
+    steps:
+      - name: "Terragrunt plan"
+        shell: bash
+        run: |
+          echo "Running Terragrunt plan"
+    
+
+  # Apply terraform plan  
+  deploy_component:
+    needs: build_component
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.env }}-approve
+    strategy:
+      matrix:
+        component_path: ${{ fromJson(inputs.component_list) }}
+    steps:
+      - name: "Terragrunt apply"
+        shell: bash
+        run: |
+          echo "Running Terragrunt apply"
