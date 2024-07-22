@@ -30,7 +30,7 @@ jobs:
   deploy_component:
     needs: build_component
     runs-on: ubuntu-latest
-    environment: ${{ inputs.env }}-approve
+    environment: ${{ inputs.env }}
     strategy:
       matrix:
         component_path: ${{ fromJson(inputs.component_list) }}
