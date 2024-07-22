@@ -4,20 +4,20 @@
 
 1. Set prerequisites
 
-Replace `ENVIRONMENT_SHORT_NAME` variable value with environment name you going to create.
+Replace `ENVIRONMENT` variable value with environment name you going to create.
 
 ```bash
-export ENVIRONMENT_SHORT_NAME=poc
+export ENVIRONMENT=poc
 export GITHUB_RUNNER_PAT=***
 export TERRAGRUNT_PROVIDER_CACHE=1
-git checkout -b feature/add-${ENVIRONMENT_SHORT_NAME}-environment
+git checkout -b feature/add-${ENVIRONMENT}-environment
 ```
 
 2. Create variable file
 
 ```bash
 cd configuration
-touch ${ENVIRONMENT_SHORT_NAME}.tfvars
+touch ${ENVIRONMENT}.tfvars
 cd ..
 ```
 
@@ -42,7 +42,7 @@ terragrunt run-all apply -auto-approve
 
 ```bash
 git add .
-git commit -m "Add new ${ENVIRONMENT_SHORT_NAME} environment"
+git commit -m "Add new ${ENVIRONMENT} environment"
 git push origin HEAD
 ```
 
