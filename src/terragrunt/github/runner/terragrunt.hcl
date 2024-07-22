@@ -1,0 +1,59 @@
+terraform {
+  source = "../../..//modules/components/runner"
+}
+
+include "root" {
+  path           = find_in_parent_folders()
+  merge_strategy = "deep"
+}
+
+include "backend" {
+  path = find_in_parent_folders("azurerm_backend.hcl")
+}
+
+include "azurerm_provider" {
+  path = find_in_parent_folders("azurerm_provider.hcl")
+}
+
+dependency "naming" {
+  config_path = "../../base/naming"
+
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "refresh", "plan"]
+  mock_outputs = {
+    name       = "mock-dev"
+    tags = {
+      mock_tag = "mock_value"
+    }
+  }
+}
+
+dependency "base" {
+  config_path                             = "../../base/base"
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "refresh", "plan"]
+  mock_outputs = {
+    resource_groups = {
+      base = {
+        name = "mock-dev-rg"
+      }
+    }
+    subnets = {
+      runner = {
+        id = "/subscriptions/df980cf1-51b3-458b-861a-ae9be3ff0e8a/resourceGroups/mock-dev-rg/providers/Microsoft.Network/virtualNetworks/mock-dev-vnet/subnets/mock-subnet"
+      }
+    }
+    key_vaults = {
+      layer_shared_public = {
+        id = "/subscriptions/df980cf1-51b3-458b-861a-ae9be3ff0e8a/resourceGroups/mock-dev-rg/providers/Microsoft.KeyVault/vaults/mockdevkv"
+      }
+    }
+  }
+}
+
+inputs = {
+  name                = dependency.naming.outputs.name
+  tags                = dependency.naming.outputs.tags
+  resource_group_name = dependency.base.outputs.resource_groups["base"].name
+  subnet_id           = dependency.base.outputs.subnets["runner"].id
+  key_vault_id        = dependency.base.outputs.key_vaults["layer_shared_public"].id
+  github_pat          = get_env("GITHUB_RUNNER_PAT")
+}

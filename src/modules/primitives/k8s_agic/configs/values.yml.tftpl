@@ -1,0 +1,12 @@
+appgw:
+  subscriptionId: ${subscriptionId}
+  resourceGroup: ${resourceGroup}
+  name: ${name}
+  subResourceNamePrefix: "agic-"
+
+armAuth:
+  type: workloadIdentity
+  identityClientID: ${identityClientID}
+
+rbac:
+  enabled: ${rbacEnabled}
