@@ -21,6 +21,7 @@ jobs:
     env:
       layer: ${{ inputs.layer }}
       component: ${{ inputs.component }}
+      ENVIRONMENT: ${{ inputs.environment }}
     defaults:
       run:
         working-directory: src/terragrunt/${{ inputs.layer }}/${{ inputs.component }}
