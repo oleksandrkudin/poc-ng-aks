@@ -18,6 +18,15 @@ jobs:
       run:
         working-directory: ${{ inputs.component_path }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: ./.github/actions/setup_terraform
+
+      - name: Setup Terragrunt
+        uses: ./.github/actions/setup_terragrunt
+
       - name: Install Terraform
         shell: bash
         run: |
