@@ -6,10 +6,12 @@ on:
       layer:
         description: "Layer name."
         type: string
-      env:
+      environment:
         description: "Environment name."
         type: string
 
+env:
+  ENVIRONMENT: ${{ inputs.environment }}
 
 jobs:
   matrix:
@@ -55,4 +57,4 @@ jobs:
     uses: ./.github/workflows/_build_component.yml
     with:
       component_path: ${{ matrix.component_path }}
-      env: ${{ inputs.env }}
+      environment: ${{ inputs.environment }}

@@ -3,7 +3,7 @@ name: Build component
 on:
   workflow_call:
     inputs:
-      env:
+      environment:
         description: "Environment name."
         type: string
       component_path:
@@ -13,7 +13,7 @@ on:
 jobs:
   build_component:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.env }}-no-approve
+    environment: ${{ inputs.environment }}-no-approve
     defaults:
       run:
         working-directory: ${{ inputs.component_path }}

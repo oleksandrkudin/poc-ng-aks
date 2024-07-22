@@ -9,4 +9,4 @@ jobs:
   deploy_dev:
     uses: ./.github/workflows/_deploy_env.yml
     with:
-      env: dev
+      environment: dev

@@ -3,7 +3,7 @@ name: Deploy component
 on:
   workflow_call:
     inputs:
-      env:
+      environment:
         description: "Environment name."
         type: string
       component_list:
@@ -15,7 +15,7 @@ jobs:
   # Create terraform plan
   build_component:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.env }}-no-approve
+    environment: ${{ inputs.environment }}-no-approve
     strategy:
       matrix:
         component_path: ${{ fromJson(inputs.component_list) }}
@@ -30,7 +30,7 @@ jobs:
   deploy_component:
     needs: build_component
     runs-on: ubuntu-latest
-    environment: ${{ inputs.env }}
+    environment: ${{ inputs.environment }}
     strategy:
       matrix:
         component_path: ${{ fromJson(inputs.component_list) }}

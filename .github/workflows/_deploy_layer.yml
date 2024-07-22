@@ -6,9 +6,12 @@ on:
       layer:
         description: "Layer name."
         type: string
-      env:
+      environment:
         description: "Environment name."
         type: string
+
+env:
+  ENVIRONMENT: ${{ inputs.environment }}
 
 jobs:
   # Create matrix
@@ -58,4 +61,4 @@ jobs:
     uses: ./.github/workflows/_deploy_component_group.yml
     with:
       component_list: ${{ toJson(fromJson(needs.matrix.outputs.layer_module_groups)[matrix.component_group]) }}
-      env: ${{ inputs.env }}
+      environment: ${{ inputs.environment }}
