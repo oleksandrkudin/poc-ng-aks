@@ -6,8 +6,11 @@ on:
       environment:
         description: "Environment name."
         type: string
-      component_path:
-        description: "Absolute path to component code."
+      layer:
+        description: "Layer name."
+        type: string
+      component:
+        description: "Сomponent name."
         type: string
 
 jobs:
@@ -16,7 +19,7 @@ jobs:
     environment: ${{ inputs.environment }}-no-approve
     defaults:
       run:
-        working-directory: ${{ inputs.component_path }}
+        working-directory: src/terragrunt/${{ inputs.layer }}/${{ inputs.component }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,26 +29,6 @@ jobs:
 
       - name: Setup Terragrunt
         uses: ./.github/actions/setup_terragrunt
-
-      - name: Install Terraform
-        shell: bash
-        run: |
-          echo "Installing Terraform"
-
-      - name: Configure Terraform
-        shell: bash
-        run: |
-          echo "Configuring Terraform"
-
-      - name: Install Terragrunt
-        shell: bash
-        run: |
-          echo "Installing Terragrunt"
-
-      - name: Configure Terragrunt
-        shell: bash
-        run: |
-          echo "Configuring Terragrunt"
 
       - name: Terragrunt init
         shell: bash

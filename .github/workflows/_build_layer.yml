@@ -43,18 +43,24 @@ jobs:
         run: |
           jq '[. | to_entries | .[].value] | flatten' ${RUNNER_TEMP}/${layer}.json | tee ${RUNNER_TEMP}/${layer}-modules.json
       
+      - name: Convert absolute module path to name only
+        shell: bash
+        run: |
+          cat ${RUNNER_TEMP}/${layer}-modules.json | sed "s|$(pwd)/||g" | tee ${RUNNER_TEMP}/${layer}-nameonly-modules.json
+
       - name: Set step output to terragrunt modules
         id: component_list
         shell: bash
         run: |
-          echo "component_list=$(jq '.' --compact-output ${RUNNER_TEMP}/${layer}-modules.json)" | tee -a "$GITHUB_OUTPUT"
+          echo "component_list=$(jq '.' --compact-output ${RUNNER_TEMP}/${layer}-nameonly-modules.json)" | tee -a "$GITHUB_OUTPUT"
 
   build_component:
     needs: matrix
     strategy:
       matrix:
-        component_path:  ${{ fromJson(needs.matrix.outputs.component_list) }}
+        component:  ${{ fromJson(needs.matrix.outputs.component_list) }}
     uses: ./.github/workflows/_build_component.yml
     with:
-      component_path: ${{ matrix.component_path }}
       environment: ${{ inputs.environment }}
+      layer: ${{ inputs.layer }}
+      component: ${{ matrix.component }}
