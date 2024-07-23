@@ -16,6 +16,7 @@ on:
 jobs:
   # Create terraform plan
   build_component:
+    name: build ${{ inputs.layer }} (${{ matrix.component }})
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}-no-approve
     strategy:
@@ -85,6 +86,7 @@ jobs:
           overwrite: true
   
   changes_check:
+    name: changes ${{ inputs.layer }} (${{ join(fromJson(inputs.component_list), ', ') }})
     needs: build_component
     runs-on: ubuntu-latest
     env:
@@ -114,6 +116,7 @@ jobs:
 
   # Apply terraform plan  
   deploy_component:
+    name: deploy ${{ inputs.layer }} (${{ matrix.component }})
     needs: changes_check
     if: ${{ needs.changes_check.outputs.component_with_changes_list != '[]' }}
     runs-on: ubuntu-latest

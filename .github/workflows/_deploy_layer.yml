@@ -19,6 +19,7 @@ env:
 jobs:
   # Create matrix
   matrix:
+    name: matrix (${{ inputs.layer }})
     runs-on: ubuntu-latest
     defaults:
       run:
