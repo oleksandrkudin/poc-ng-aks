@@ -58,7 +58,7 @@ jobs:
       - name: Terragrunt plan
         shell: bash
         run: |
-          terragrunt plan -out ${layer}-${component}.tfplan
+          terragrunt plan -out ${GITHUB_WORKSPACE}/src/terragrunt/${{ inputs.layer }}/${{ inputs.component }}/${layer}-${component}.tfplan
       
       # TODO: I do not think I need here publishing artifact. Not sure. Where will be another build that will require artifact to be published.
       - name: Publish terraform plan

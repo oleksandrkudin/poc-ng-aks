@@ -39,5 +39,8 @@ override.tf.json
 .terraformrc
 terraform.rc
 
+# Dependency lock file
+**/.terraform.lock.hcl
+
 # Terragrunt
 **/.terragrunt-cache/*
