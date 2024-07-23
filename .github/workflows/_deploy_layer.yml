@@ -10,6 +10,9 @@ on:
         description: "Environment name."
         type: string
 
+permissions:
+  id-token: write
+
 env:
   ENVIRONMENT: ${{ inputs.environment }}
 
@@ -34,17 +37,22 @@ jobs:
         run: |
           terragrunt output-module-groups --terragrunt-ignore-external-dependencies | tee ${RUNNER_TEMP}/${layer}.json
       
-      - name: Set step output
+      - name: Convert absolute module path to name only
+        shell: bash
+        run: |
+          cat ${RUNNER_TEMP}/${layer}.json | sed "s|$(pwd)/||g" | tee ${RUNNER_TEMP}/${layer}-nameonly.json
+
+      - name: Set step output to layer module groups
         id: layer_module_groups
         shell: bash
         run: |
-          echo "layer_module_groups=$(jq '.' --compact-output ${RUNNER_TEMP}/${layer}.json)" | tee -a "$GITHUB_OUTPUT"
+          echo "layer_module_groups=$(jq '.' --compact-output ${RUNNER_TEMP}/${layer}-nameonly.json)" | tee -a "$GITHUB_OUTPUT"
       
       - name: Create ordered list of groups
         shell: bash
         run: |
           jq '. | keys | sort' ${RUNNER_TEMP}/${layer}.json | tee ${RUNNER_TEMP}/${layer}-groups.json
-      
+    
       - name: Set step output to terragrunt modules' groups
         id: group_list
         shell: bash
@@ -58,6 +66,7 @@ jobs:
     strategy:
       matrix:
         component_group: ${{ fromJson(needs.matrix.outputs.group_list) }}
+    secrets: inherit
     uses: ./.github/workflows/_deploy_component_group.yml
     with:
       component_list: ${{ toJson(fromJson(needs.matrix.outputs.layer_module_groups)[matrix.component_group]) }}
