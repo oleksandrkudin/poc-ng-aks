@@ -24,7 +24,7 @@ include "azurerm_provider" {
 dependency "naming" {
   config_path = "../naming"
 
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "refresh", "plan"]
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "refresh", "plan", "show"]
   mock_outputs = {
     name       = "mock-dev"
     tags = {
