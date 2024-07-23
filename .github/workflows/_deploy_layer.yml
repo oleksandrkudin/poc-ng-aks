@@ -77,3 +77,4 @@ jobs:
     with:
       component_list: ${{ toJson(fromJson(needs.matrix.outputs.layer_module_groups)[matrix.component_group]) }}
       environment: ${{ inputs.environment }}
+      layer: ${{ inputs.layer }}
