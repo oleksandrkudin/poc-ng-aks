@@ -13,6 +13,7 @@ permissions:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         layer: ["base"]
     secrets: inherit
