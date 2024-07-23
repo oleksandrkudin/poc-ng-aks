@@ -59,6 +59,7 @@ jobs:
     strategy:
       matrix:
         component:  ${{ fromJson(needs.matrix.outputs.component_list) }}
+    secrets: inherit
     uses: ./.github/workflows/_build_component.yml
     with:
       environment: ${{ inputs.environment }}

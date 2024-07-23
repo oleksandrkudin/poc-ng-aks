@@ -7,13 +7,6 @@ include "root" {
   merge_strategy = "deep"
 }
 
-remote_state {
-  backend = "local"
-  generate = {
-    path      = "local_backend.tf"
-    if_exists = "overwrite"
-  }
-  config = {
-    path = "/tmp/naming_terraform.tfstate"
-  }
+include "backend" {
+  path = find_in_parent_folders("azurerm_backend.hcl")
 }

@@ -12,6 +12,7 @@ jobs:
     strategy:
       matrix:
         layer: ["base"]
+    secrets: inherit
     uses: ./.github/workflows/_build_layer.yml
     with:
       layer: ${{ matrix.layer }}
