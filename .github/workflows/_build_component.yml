@@ -22,6 +22,9 @@ jobs:
       layer: ${{ inputs.layer }}
       component: ${{ inputs.component }}
       ENVIRONMENT: ${{ inputs.environment }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
     defaults:
       run:
         working-directory: src/terragrunt/${{ inputs.layer }}/${{ inputs.component }}
@@ -45,7 +48,7 @@ jobs:
       - name: Terragrunt init
         shell: bash
         run: |
-          terragrunt init
+          terragrunt init -reconfigure
       
       - name: Terragrunt validate
         shell: bash

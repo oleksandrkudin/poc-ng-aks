@@ -20,6 +20,11 @@ module "gh_identity" {
       issuer   = "https://token.actions.githubusercontent.com"
       subject  = "repo:${var.github_repository}:environment:${var.environment}"
     }
+    github_repository_environment_no_approve = {
+      audience = ["api://AzureADTokenExchange"]
+      issuer   = "https://token.actions.githubusercontent.com"
+      subject  = "repo:${var.github_repository}:environment:${var.environment}-no-approve"
+    }
   }
 
   role_mappings = local.combined_role_mappings["Contributor"]
