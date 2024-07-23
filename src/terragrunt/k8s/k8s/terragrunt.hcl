@@ -1,5 +1,5 @@
 terraform {
-  source = "../..//modules/components/k8s"
+  source = "../../..//modules/components/k8s"
 }
 
 include "root" {
@@ -16,7 +16,7 @@ include "azurerm_provider" {
 }
 
 dependency "naming" {
-  config_path = "../base/naming"
+  config_path = "../../base/naming"
 
   mock_outputs_allowed_terraform_commands = ["init", "validate", "refresh", "plan", "show"]
   mock_outputs = {
@@ -28,7 +28,7 @@ dependency "naming" {
 }
 
 dependency "base" {
-  config_path                             = "../base/base"
+  config_path                             = "../../base/base"
   mock_outputs_allowed_terraform_commands = ["init", "validate", "refresh", "plan", "show"]
   mock_outputs = {
     resource_groups = {
@@ -41,7 +41,7 @@ dependency "base" {
 }
 
 dependency "kubernetes_cluster" {
-  config_path                             = "../core/kubernetes_cluster"
+  config_path                             = "../../core/kubernetes_cluster"
 
   mock_outputs_allowed_terraform_commands = ["init", "validate", "refresh", "plan", "show"]
   mock_outputs = {
