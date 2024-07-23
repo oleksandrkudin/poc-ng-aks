@@ -3,6 +3,9 @@ name: Build product
 on:
   pull_request:
 
+permissions:
+  id-token: write
+
 # Can we use matrix job for build?
 #   I dropped off this idea because of job dependecies.
 #   But why dependencies could be important for build? => Only if refresh is done and next layer refer to attribute changed during refresh. I got a little bit accurate plan.

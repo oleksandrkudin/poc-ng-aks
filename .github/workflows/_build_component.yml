@@ -13,9 +13,6 @@ on:
         description: "Сomponent name."
         type: string
 
-permissions:
-  id-token: write
-
 jobs:
   build_component:
     name: build_component (${{ inputs.component }})
