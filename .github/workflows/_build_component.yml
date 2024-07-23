@@ -59,15 +59,3 @@ jobs:
         shell: bash
         run: |
           terragrunt plan -out ${GITHUB_WORKSPACE}/src/terragrunt/${layer}/${component}/${layer}-${component}.tfplan
-      
-      - name: Terragrunt show plan
-        shell: bash
-        run: |
-          terragrunt show ${GITHUB_WORKSPACE}/src/terragrunt/${layer}/${component}/${layer}-${component}.tfplan
-
-      # TODO: I do not think I need here publishing artifact. Not sure. Where will be another build that will require artifact to be published.
-      - name: Publish terraform plan
-        shell: bash
-        run: |
-          echo "Publishing terraform plan"
-          ls -lh 
