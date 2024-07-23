@@ -58,12 +58,14 @@ jobs:
         run: |
           set +e
           terragrunt plan -detailed-exitcode -out ${GITHUB_WORKSPACE}/src/terragrunt/${layer}/${component}/${layer}-${component}.tfplan
-          if [ $? -eq 2 ]; then
+          terragrunt_plan_exitcode=$?
+          echo "terragrunt_plan_exitcode=$terragrunt_plan_exitcode"
+          if [ $terragrunt_plan_exitcode -eq 2 ]; then
             echo -n "true" > ${layer}-${component}-terragrunt-plan-changes
-          elif [ $? -eq 0 ]; then
+          elif [ $terragrunt_plan_exitcode -eq 0 ]; then
             echo -n "false" > ${layer}-${component}-terragrunt-plan-changes
           else
-            exit $?
+            exit $terragrunt_plan_exitcode
           fi
       
       - name: Publish Terraform plan
