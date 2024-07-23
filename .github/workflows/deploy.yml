@@ -1,6 +1,9 @@
 name: Deploy product
 
 on:
+  # TODO: test purposes. Remove after test in branch
+  pull_request:
+
   push:
     branches:
       - main
