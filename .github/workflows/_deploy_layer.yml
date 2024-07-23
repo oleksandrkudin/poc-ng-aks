@@ -67,11 +67,10 @@ jobs:
 
   deploy_component_group:
     needs: matrix
-    concurrency:
-      group: deploy_${{ inputs.layer }}
     strategy:
       matrix:
         component_group: ${{ fromJson(needs.matrix.outputs.group_list) }}
+      max-parallel: 1
     secrets: inherit
     uses: ./.github/workflows/_deploy_component_group.yml
     with:
