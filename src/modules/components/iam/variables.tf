@@ -79,6 +79,11 @@ variable "github_repository" {
 #   })))
 # }
 
+variable "add_current_identity_role_mapping" {
+  type = bool
+  default = false
+}
+
 variable "all_role_mappings" {
   type = map(map(map(object({
     scope                 = string
