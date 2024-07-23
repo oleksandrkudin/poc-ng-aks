@@ -103,9 +103,10 @@ jobs:
         id: component_with_changes_list
         shell: bash
         run: |
+          ls
           component_with_changes_list=()
           for component in $(echo "$component_list" | jq '.[]' --raw-output); do
-            if [ "$(cat .*-${component}-terragrunt-plan-changes)" == "true" ]; then
+            if [ "$(cat *-${component}-terragrunt-plan-changes)" == "true" ]; then
               component_with_changes_list+=($component)
             fi
           done
