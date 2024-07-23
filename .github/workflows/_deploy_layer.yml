@@ -31,6 +31,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      
+      - name: Setup Terraform
+        uses: ./.github/actions/setup_terraform
+
+      - name: Setup Terragrunt
+        uses: ./.github/actions/setup_terragrunt
 
       - name: Terragrunt output-module-groups
         shell: bash
