@@ -1,0 +1,28 @@
+name: Destroy product environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment name."
+        type: string
+      layers:
+        description: "List of layers to destroy in specified order."
+        type: string
+        default: '["k8s", "core", "mgmt"]' 
+
+permissions:
+  id-token: write
+
+jobs:
+  destroy:
+    strategy:
+      max-parallel: 1
+      fail-fast: true
+      matrix:
+        layer: ${{ fromJson(inputs.layers) }}
+    secrets: inherit
+    uses: ./.github/workflows/_destroy_layer.yml
+    with:
+      layer: ${{ matrix.layer }}
+      environment: ${{ inputs.environment }}

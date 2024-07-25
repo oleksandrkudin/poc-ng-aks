@@ -1,4 +1,4 @@
-name: Deploy component
+name: Destroy component
 
 on:
   workflow_call:
@@ -53,11 +53,11 @@ jobs:
         run: |
           terragrunt init -reconfigure
       
-      - name: Terragrunt plan
+      - name: Terragrunt plan destroy
         shell: bash
         run: |
           set +e
-          terragrunt plan -detailed-exitcode -out ${GITHUB_WORKSPACE}/src/terragrunt/${layer}/${component}/${layer}-${component}.tfplan
+          terragrunt plan -destroy -detailed-exitcode -out ${GITHUB_WORKSPACE}/src/terragrunt/${layer}/${component}/${layer}-${component}.tfplan
           terragrunt_plan_exitcode=$?
           echo "terragrunt_plan_exitcode=$terragrunt_plan_exitcode"
           if [ $terragrunt_plan_exitcode -eq 2 ]; then
@@ -112,9 +112,9 @@ jobs:
             fi
           done
           echo "component_with_changes_list=$(jq --compact-output -n '$ARGS.positional' --args ${component_with_changes_list[@]})" | tee -a "$GITHUB_OUTPUT"
-
-  deploy_component:
-    name: deploy ${{ inputs.layer }} (${{ matrix.component }})
+  
+  destroy_component:
+    name: destroy ${{ inputs.layer }} (${{ matrix.component }})
     needs: changes_check
     if: ${{ needs.changes_check.outputs.component_with_changes_list != '[]' }}
     runs-on: ubuntu-latest
