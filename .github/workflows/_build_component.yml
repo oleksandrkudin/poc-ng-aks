@@ -1,0 +1,61 @@
+name: Build component
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Environment name."
+        type: string
+      layer:
+        description: "Layer name."
+        type: string
+      component:
+        description: "Сomponent name."
+        type: string
+
+jobs:
+  build_component:
+    name: build_component (${{ inputs.component }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}-no-approve
+    env:
+      layer: ${{ inputs.layer }}
+      component: ${{ inputs.component }}
+      ENVIRONMENT: ${{ inputs.environment }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+    defaults:
+      run:
+        working-directory: src/terragrunt/${{ inputs.layer }}/${{ inputs.component }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: ./.github/actions/setup_terraform
+
+      - name: Setup Terragrunt
+        uses: ./.github/actions/setup_terragrunt
+
+      - name: 'Azure login'
+        uses: azure/login@v1
+        with:
+            client-id: ${{ secrets.AZURE_CLIENT_ID }}
+            tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+            subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terragrunt init
+        shell: bash
+        run: |
+          terragrunt init -reconfigure
+      
+      - name: Terragrunt validate
+        shell: bash
+        run: |
+          terragrunt validate
+      
+      - name: Terragrunt plan
+        shell: bash
+        run: |
+          terragrunt plan -out ${GITHUB_WORKSPACE}/src/terragrunt/${layer}/${component}/${layer}-${component}.tfplan

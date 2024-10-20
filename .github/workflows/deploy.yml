@@ -1,0 +1,19 @@
+name: Deploy product
+
+on:
+  # TODO: test purposes. Remove after test in branch
+  pull_request:
+
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+
+jobs:
+  deploy_dev:
+    secrets: inherit
+    uses: ./.github/workflows/_deploy_env.yml
+    with:
+      environment: dev

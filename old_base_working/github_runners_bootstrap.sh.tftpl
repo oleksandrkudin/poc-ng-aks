@@ -1,0 +1,215 @@
+#!/bin/bash
+set -e -o pipefail
+
+disk_size_gb=${disk_size_gb}
+disk_lun=${disk_lun}
+
+RUNNER_CFG_PAT=${RUNNER_CFG_PAT}
+runner_scope=${runner_scope}
+runner_group=${runner_group}
+labels=${labels}
+runner_count=${runner_count}
+svc_user=${runner_user}
+
+# apply global defaults
+runners_base_dir=/runners
+
+###########################
+# Install software
+###########################
+
+# There is apt-get error during packages installation.
+# There are many references to regular Ubuntu repositories which do not exist on host.
+echo "Running apt-get update ..."
+attempt=1
+while sleep 120 && ! sudo apt-get update; do
+    echo "Attept $attempt is failed."
+    [[ $((attempt++)) -ge 10 ]] && exit 1
+done
+
+sudo apt-get install -yq \
+  jq
+
+###########################
+# Initialize data disk
+###########################
+echo "Initializing data disk ..."
+echo "Getting all disks ..."
+lsblk --output NAME,HCTL,SIZE,TYPE --json | tee /tmp/all_blockdevices.json
+
+echo "Getting block devices without partitions ..."
+jq '[.blockdevices[] | select(.type == "disk" and .children == null)]' /tmp/all_blockdevices.json | tee /tmp/blockdevices_no_partitions.json
+
+echo "Getting data disk block device ..."
+jq --arg disk_size_gb $disk_size_gb --arg disk_lun $disk_lun '.[] | select(.size == ($disk_size_gb + "G") and (.hctl | endswith(":" + $disk_lun)))' /tmp/blockdevices_no_partitions.json | tee /tmp/datadisk.json
+
+echo "Getting data disk device name ..."
+data_disk=$(jq --raw-output '.name' /tmp/datadisk.json)
+echo "data_disk=$data_disk"
+
+echo "Creating partition with file system ..."
+sudo parted /dev/$data_disk --script mklabel gpt mkpart xfspart xfs 0% 100%
+partition=$${data_disk}1
+sudo mkfs.xfs /dev/$partition
+sudo partprobe /dev/$partition
+
+echo "Mounting data disk ..."
+sudo mkdir $runners_base_dir
+sudo mount /dev/$partition $runners_base_dir
+
+echo "Adding disk mount to fstab for persistence ..."
+data_disk_mount_info=$(blkid | grep -i "/dev/$partition")
+echo $data_disk_mount_info
+
+data_disk_uuid=$(echo $data_disk_mount_info | sed -rn 's/.*\s+UUID="(\S*)"\s+.*/\1/p')
+echo "data_disk_uuid=$data_disk_uuid"
+
+echo "UUID=$data_disk_uuid $runners_base_dir xfs defaults,nofail 1 2" | sudo tee -a  /etc/fstab
+cat /etc/fstab
+
+###########################
+# Install github runners
+###########################
+
+# apply defaults
+runner_name=$${runner_name:-$(hostname)}
+svc_user=$${svc_user:-$USER}
+
+echo "Configuring runner @ $runner_scope"
+sudo echo
+
+#---------------------------------------
+# Validate Environment
+#---------------------------------------
+runner_plat=linux
+[ ! -z "$(which sw_vers)" ] && runner_plat=osx;
+
+runner_arch=x64
+[ ! -z "$(arch | grep arm64)" ] && runner_arch=arm64
+
+function fatal()
+{
+   echo "error: $1" >&2
+   exit 1
+}
+
+if [ -z "$runner_scope" ]; then fatal "supply scope as argument 1"; fi
+if [ -z "$RUNNER_CFG_PAT" ]; then fatal "RUNNER_CFG_PAT must be set before calling"; fi
+
+which curl || fatal "curl required.  Please install in PATH with apt-get, brew, etc"
+which jq || fatal "jq required.  Please install in PATH with apt-get, brew, etc"
+
+#--------------------------------------
+# Get a config token
+#--------------------------------------
+echo
+echo "Generating a registration token..."
+
+base_api_url="https://api.github.com"
+if [ -n "$ghe_hostname" ]; then
+    base_api_url="https://$ghe_hostname/api/v3"
+fi
+
+# if the scope has a slash, it's a repo runner
+orgs_or_repos="orgs"
+if [[ "$runner_scope" == *\/* ]]; then
+    orgs_or_repos="repos"
+fi
+
+export RUNNER_TOKEN=$(curl -s -X POST $base_api_url/$orgs_or_repos/$runner_scope/actions/runners/registration-token -H "accept: application/vnd.github.everest-preview+json" -H "authorization: token $RUNNER_CFG_PAT" | jq -r '.token')
+
+if [ "null" == "$RUNNER_TOKEN" -o -z "$RUNNER_TOKEN" ]; then fatal "Failed to get a token"; fi
+
+#---------------------------------------
+# Download latest released and extract
+#---------------------------------------
+echo
+echo "Downloading latest runner ..."
+
+# For the GHES Alpha, download the runner from github.com
+latest_version_label=$(curl -s -X GET 'https://api.github.com/repos/actions/runner/releases/latest' | jq -r '.tag_name')
+latest_version=$(echo $${latest_version_label:1})
+runner_file="actions-runner-$runner_plat-$runner_arch-$latest_version.tar.gz"
+
+if [ -f "$runner_file" ]; then
+    echo "$runner_file exists. skipping download."
+else
+    runner_url="https://github.com/actions/runner/releases/download/$latest_version_label/$runner_file"
+
+    echo "Downloading $latest_version_label for $runner_plat ..."
+    echo $runner_url
+
+    curl -O -L $runner_url
+fi
+
+ls -la *.tar.gz
+
+# Can be installed many runners on the same host
+for runner_index in $(seq 1 $runner_count); do
+
+  runner_dir=runner_$runner_index
+  
+  # bail early if there's already a runner there. also sudo early
+  if [ -d $runners_base_dir/$runner_dir ]; then
+      fatal "Runner already exists.  Use a different directory or delete $runners_base_dir/$runner_dir"
+  fi
+
+  sudo mkdir $runners_base_dir/$runner_dir
+  sudo chown $svc_user $runners_base_dir/$runner_dir
+
+  #---------------------------------------------------
+  # extract to runner directory in this directory
+  #---------------------------------------------------
+  echo
+  echo "Extracting $runner_file to $runners_base_dir/$runner_dir"
+
+  tar xzf "./$runner_file" -C $runners_base_dir/$runner_dir
+
+  # export of pass
+  sudo chown -R $svc_user $runners_base_dir/$runner_dir
+
+  pushd $runners_base_dir/$runner_dir
+
+  #---------------------------------------
+  # Unattend config
+  #---------------------------------------
+  runner_url="https://github.com/$runner_scope"
+  if [ -n "$ghe_hostname" ]; then
+      runner_url="https://$ghe_hostname/$runner_scope"
+  fi
+
+  current_runner_name=$${runner_name}_$${runner_index}
+
+  echo
+  echo "Configuring $current_runner_name @ $runner_url"
+  echo "./config.sh --unattended --url $runner_url --token *** --name $current_runner_name $${labels:+--labels $labels} $${runner_group:+--runnergroup \"$runner_group\"} $${disableupdate:+--disableupdate}"
+  sudo -E -u $svc_user ./config.sh --unattended --url $runner_url --token $RUNNER_TOKEN $${replace:+--replace} --name $current_runner_name $${labels:+--labels $labels} $${runner_group:+--runnergroup "$runner_group"} $${disableupdate:+--disableupdate}
+
+  #---------------------------------------
+  # Configuring as a service
+  #---------------------------------------
+  echo
+  echo "Configuring as a service ..."
+  prefix=""
+  if [ "$runner_plat" == "linux" ]; then
+      prefix="sudo "
+  fi
+
+  $prefix./svc.sh install $svc_user
+  $prefix./svc.sh start
+
+  pushd +1
+done
+
+
+
+
+
+
+
+
+
+
+
+
+

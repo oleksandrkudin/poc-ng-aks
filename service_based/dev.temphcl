@@ -1,0 +1,5 @@
+inputs = {
+  location    = "westeurope"
+  name        = "oku-dev-wue"
+  environment = "dev"
+}

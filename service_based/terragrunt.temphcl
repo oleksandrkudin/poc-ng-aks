@@ -1,0 +1,82 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# TERRAGRUNT CONFIGURATION
+# Terragrunt is a thin wrapper for Terraform that provides extra tools for working with multiple Terraform modules,
+# remote state, and locking: https://github.com/gruntwork-io/terragrunt
+# ---------------------------------------------------------------------------------------------------------------------
+terraform {
+  extra_arguments "plugin_dir" {
+    commands = [
+      "init",
+      "plan",
+      "apply",
+      "destroy",
+      "output"
+    ]
+  }
+}
+
+# Generate an Azure provider block
+generate "provider" {
+  path      = "provider.tf"
+  if_exists = "overwrite"
+  contents  = <<-EOF
+    provider "azurerm" {
+      features {
+        key_vault {
+          purge_soft_delete_on_destroy    = false
+          recover_soft_deleted_key_vaults = false 
+        }
+      }
+    }
+
+    terraform {
+      required_providers {
+        azurerm = {
+          source  = "hashicorp/azurerm"
+          version = "3.108.0"
+        }
+      }
+    }
+  EOF
+}
+
+locals {
+  # locals used in current file
+  #backend_storage_resource_group_name = "rg-bic-tfstate"
+  #backend_storage_account_name        = "bictfstatefiles"
+
+  # locals used in Terragrunt child modules
+  module_repository = "${get_parent_terragrunt_dir()}/../src/modules"
+  environment       = get_env("ENV", "dev")
+}
+
+# remote_state {
+#   backend = "azurerm"
+#   generate = {
+#     path      = "backend.tf"
+#     if_exists = "overwrite"
+#   }
+#   config = {
+#     resource_group_name  = local.backend_storage_resource_group_name
+#     storage_account_name = local.backend_storage_account_name
+#     container_name       = "environment-states"
+#     key                  = "${lower("bic-compute-gallery-infra/${local.environment}/${path_relative_to_include()}/terraform.tfstate")}"
+#   }
+# }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# GLOBAL PARAMETERS
+# These variables apply to all configurations in this subfolder. These are automatically merged into the child
+# `terragrunt.hcl` config via the include block.
+# ---------------------------------------------------------------------------------------------------------------------
+
+# Configure root level variables that all resources can inherit. This is especially helpful with multi-account configs
+# where terraform_remote_state data sources are placed directly into the modules.
+inputs = {
+  tags = {
+    business_unit = "Private"
+    owner         = "Oleksandr Kudin"
+    product       = "AKS"
+    provisioner   = "terraform"
+  }
+}

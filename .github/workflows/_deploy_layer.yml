@@ -1,0 +1,80 @@
+name: Deploy layer
+
+on:
+  workflow_call:
+    inputs:
+      layer:
+        description: "Layer name."
+        type: string
+      environment:
+        description: "Environment name."
+        type: string
+
+permissions:
+  id-token: write
+
+env:
+  ENVIRONMENT: ${{ inputs.environment }}
+
+jobs:
+  matrix:
+    name: matrix (${{ inputs.layer }})
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/terragrunt/${{ inputs.layer }}
+    env:
+      layer: ${{ inputs.layer }}
+    outputs:
+      group_list: ${{ steps.group_list.outputs.group_list }}
+      layer_module_groups: ${{ steps.layer_module_groups.outputs.layer_module_groups }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Terraform
+        uses: ./.github/actions/setup_terraform
+
+      - name: Setup Terragrunt
+        uses: ./.github/actions/setup_terragrunt
+
+      - name: Terragrunt output-module-groups
+        shell: bash
+        run: |
+          terragrunt output-module-groups --terragrunt-ignore-external-dependencies | tee ${RUNNER_TEMP}/${layer}.json
+      
+      - name: Convert absolute module path to name only
+        shell: bash
+        run: |
+          cat ${RUNNER_TEMP}/${layer}.json | sed "s|$(pwd)/||g" | tee ${RUNNER_TEMP}/${layer}-nameonly.json
+
+      - name: Set step output to layer module groups
+        id: layer_module_groups
+        shell: bash
+        run: |
+          echo "layer_module_groups=$(jq '.' --compact-output ${RUNNER_TEMP}/${layer}-nameonly.json)" | tee -a "$GITHUB_OUTPUT"
+      
+      - name: Create ordered list of groups
+        shell: bash
+        run: |
+          jq '. | keys | sort' ${RUNNER_TEMP}/${layer}.json | tee ${RUNNER_TEMP}/${layer}-groups.json
+    
+      - name: Set step output to terragrunt modules' groups
+        id: group_list
+        shell: bash
+        run: |
+          echo "group_list=$(jq '.' --compact-output ${RUNNER_TEMP}/${layer}-groups.json)" | tee -a "$GITHUB_OUTPUT"
+
+  deploy_component_group:
+    needs: matrix
+    strategy:
+      fail-fast: true
+      matrix:
+        component_group: ${{ fromJson(needs.matrix.outputs.group_list) }}
+      max-parallel: 1
+    secrets: inherit
+    uses: ./.github/workflows/_deploy_component_group.yml
+    with:
+      component_list: ${{ toJson(fromJson(needs.matrix.outputs.layer_module_groups)[matrix.component_group]) }}
+      environment: ${{ inputs.environment }}
+      layer: ${{ inputs.layer }}

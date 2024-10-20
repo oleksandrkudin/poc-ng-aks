@@ -1,0 +1,33 @@
+terraform {
+  source = "./"
+}
+
+include "root" {
+  path           = find_in_parent_folders("terragrunt.hcl")
+  merge_strategy = "deep"
+  expose         = true
+}
+
+include "service" {
+  path           = find_in_parent_folders("service.hcl")
+  merge_strategy = "deep"
+  expose         = true
+}
+
+include "shared" {
+  path           = find_in_parent_folders("shared.hcl")
+  merge_strategy = "deep"
+  expose         = true
+}
+
+include "env" {
+  path           = find_in_parent_folders("${get_env("ENV", "dev")}.hcl")
+  merge_strategy = "deep"
+  expose         = true
+}
+
+# inputs = {
+#   name =
+#   location =
+#   tags =
+# }

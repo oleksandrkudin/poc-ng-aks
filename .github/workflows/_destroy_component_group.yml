@@ -1,0 +1,166 @@
+name: Destroy component
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Environment name."
+        type: string
+      layer:
+        description: "Layer name."
+        type: string
+      component_list:
+        description: "Component list."
+        type: string
+
+jobs:
+  build_component:
+    name: build ${{ inputs.layer }} (${{ matrix.component }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}-no-approve
+    strategy:
+      matrix:
+        component: ${{ fromJson(inputs.component_list) }}
+    defaults:
+      run:
+        working-directory: src/terragrunt/${{ inputs.layer }}/${{ matrix.component }}
+    env:
+      layer: ${{ inputs.layer }}
+      component: ${{ matrix.component }}
+      ENVIRONMENT: ${{ inputs.environment }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: ./.github/actions/setup_terraform
+
+      - name: Setup Terragrunt
+        uses: ./.github/actions/setup_terragrunt
+
+      - name: 'Azure login'
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terragrunt init
+        shell: bash
+        run: |
+          terragrunt init -reconfigure
+      
+      - name: Terragrunt plan destroy
+        shell: bash
+        run: |
+          set +e
+          terragrunt plan -destroy -detailed-exitcode -out ${GITHUB_WORKSPACE}/src/terragrunt/${layer}/${component}/${layer}-${component}.tfplan
+          terragrunt_plan_exitcode=$?
+          echo "terragrunt_plan_exitcode=$terragrunt_plan_exitcode"
+          if [ $terragrunt_plan_exitcode -eq 2 ]; then
+            echo -n "true" > ${layer}-${component}-terragrunt-plan-changes
+          elif [ $terragrunt_plan_exitcode -eq 0 ]; then
+            echo -n "false" > ${layer}-${component}-terragrunt-plan-changes
+          else
+            exit $terragrunt_plan_exitcode
+          fi
+      
+      - name: Publish Terraform plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.layer}}-${{ matrix.component }}-tfplan
+          path: src/terragrunt/${{ inputs.layer}}/${{ matrix.component }}/${{ inputs.layer}}-${{ matrix.component }}.tfplan
+          if-no-files-found: error
+          overwrite: true
+      
+      - name: Publish terragrunt-plan-changes artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.layer}}-${{ matrix.component }}-terragrunt-plan-changes
+          path: src/terragrunt/${{ inputs.layer}}/${{ matrix.component }}/${{ inputs.layer}}-${{ matrix.component }}-terragrunt-plan-changes
+          if-no-files-found: error
+          overwrite: true
+  
+  changes_check:
+    name: changes ${{ inputs.layer }} (${{ join(fromJson(inputs.component_list), ', ') }})
+    needs: build_component
+    runs-on: ubuntu-latest
+    env:
+      layer: ${{ inputs.layer }}
+      component_list: ${{ inputs.component_list }}
+    outputs:
+      component_with_changes_list: ${{ steps.component_with_changes_list.outputs.component_with_changes_list }}
+    steps:
+      - name: Download terragrunt_plan_no_changes artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*-terragrunt-plan-changes"
+          merge-multiple: true
+
+      - name: Set component_with_changes_list output
+        id: component_with_changes_list
+        shell: bash
+        run: |
+          ls
+          component_with_changes_list=()
+          for component in $(echo "$component_list" | jq '.[]' --raw-output); do
+            if [ "$(cat *-${component}-terragrunt-plan-changes)" == "true" ]; then
+              component_with_changes_list+=($component)
+            fi
+          done
+          echo "component_with_changes_list=$(jq --compact-output -n '$ARGS.positional' --args ${component_with_changes_list[@]})" | tee -a "$GITHUB_OUTPUT"
+  
+  destroy_component:
+    name: destroy ${{ inputs.layer }} (${{ matrix.component }})
+    needs: changes_check
+    if: ${{ needs.changes_check.outputs.component_with_changes_list != '[]' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    strategy:
+      matrix:
+        component: ${{ fromJson(needs.changes_check.outputs.component_with_changes_list) }}
+    defaults:
+      run:
+        working-directory: src/terragrunt/${{ inputs.layer }}/${{ matrix.component }}
+    env:
+      layer: ${{ inputs.layer }}
+      component: ${{ matrix.component }}
+      ENVIRONMENT: ${{ inputs.environment }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: ./.github/actions/setup_terraform
+
+      - name: Setup Terragrunt
+        uses: ./.github/actions/setup_terragrunt
+
+      - name: 'Azure login'
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terragrunt init
+        shell: bash
+        run: |
+          terragrunt init -reconfigure
+      
+      - name: Download Terraform plan
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.layer}}-${{ matrix.component }}-tfplan
+          path: src/terragrunt/${{ inputs.layer}}/${{ matrix.component }}
+      
+      - name: Terragrunt apply plan
+        shell: bash
+        run: |
+          terragrunt apply ${GITHUB_WORKSPACE}/src/terragrunt/${layer}/${component}/${layer}-${component}.tfplan

@@ -1,0 +1,19 @@
+name: Deploy environment
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Environment name."
+        type: string
+
+permissions:
+  id-token: write
+
+jobs:
+  deploy_base:
+    secrets: inherit
+    uses: ./.github/workflows/_deploy_layer.yml
+    with:
+      layer: base
+      environment: ${{ inputs.environment }}
