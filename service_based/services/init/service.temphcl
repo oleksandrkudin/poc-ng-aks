@@ -1,0 +1,4 @@
+inputs = {
+  # service = "init"
+  github_repository = "oleksandrkudin/poc-ng-aks"
+}

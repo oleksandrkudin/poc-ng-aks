@@ -1,0 +1,46 @@
+terraform {
+  source = "${include.root.locals.module_repository}/azurerm_user_assigned_identity"
+}
+
+include "root" {
+  path           = find_in_parent_folders("terragrunt.hcl")
+  merge_strategy = "deep"
+  expose         = true
+}
+
+include "service" {
+  path           = find_in_parent_folders("service.hcl")
+  merge_strategy = "deep"
+  expose         = true
+}
+
+include "shared" {
+  path           = find_in_parent_folders("shared.hcl")
+  merge_strategy = "deep"
+  expose         = true
+}
+
+include "env" {
+  path           = find_in_parent_folders("${get_env("ENV", "dev")}.hcl")
+  merge_strategy = "deep"
+  expose         = true
+}
+
+dependency "resource_group" {
+  config_path = "../resource_group"
+
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+  mock_outputs = {
+    name = "mocked-rg-name"
+  }
+}
+
+inputs = {
+  resource_group_name = dependency.resource_group.outputs.name
+  federated_identity_credentials = {
+    github_repository_environment = {
+      issuer  = "https://token.actions.githubusercontent.com"
+      subject = "repo:${include.service.inputs.github_repository}:environment:${include.root.locals.environment}"
+    }
+  }
+}
